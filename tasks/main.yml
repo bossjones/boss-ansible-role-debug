@@ -1,0 +1,8 @@
+---
+# tasks file for boss-ansible-role-debug
+
+# Source: https://coderwall.com/p/13lh6w
+- name: Dump all Ansible variables
+  template: src=dump_variables.j2 dest={{ debug_variables }}
+
+
