@@ -12,3 +12,8 @@ def test_hosts_file(host):
     assert f.exists
     assert f.user == 'root'
     assert f.group == 'root'
+
+def test_tmp_ansible_variables(host):
+    f = host.file('/tmp/ansible_variables')
+
+    assert f.exists
