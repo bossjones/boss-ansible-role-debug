@@ -3,8 +3,8 @@
 
 # Source: https://coderwall.com/p/13lh6w
 - name: Dump all Ansible variables
-  template: 
-    src: dump_variables.j2 
+  template:
+    src: dump_variables.j2
     dest: "{{ boss__debug__debug_variables_file }}"
   when: boss__debug__dump_type is defined and boss__debug__dump_type == 'unified'
 
@@ -17,9 +17,9 @@
     mode: "0755"
   when: boss__debug__dump_type is defined and boss__debug__dump_type == 'seperate'
 
-- name: Write dump vars to folder 
-  template: 
-    src: "{{ item.template_src }}" 
+- name: Write dump vars to folder
+  template:
+    src: "{{ item.template_src }}"
     dest: "{{ boss__debug__dump_dir }}/{{ item.fname }}"
   with_items: "{{ boss__debug__special_vars_map }}"
-  when: boss__debug__dump_type is defined and boss__debug__dump_type == 'unified'
+  when: boss__debug__dump_type is defined and boss__debug__dump_type == 'seperate'

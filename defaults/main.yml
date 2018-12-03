@@ -9,8 +9,8 @@ boss__debug__dump_dir: '/etc/ansible_dumps'
 boss__debug__dump_type: 'unified' # seperate
 
 boss__debug__special_vars_map:
-- { template_src: 'env_vars.yml.j2', fname: 'env_vars.yml' }
-- { template_src: 'group_names.yml.j2', fname: 'group_names.yml' }
-- { template_src: 'groups.yml.j2', fname: 'groups.yml' }
-- { template_src: 'hostvars.yml.j2', fname: 'hostvars.yml' }
-- { template_src: 'vars.yml.j2', fname: 'vars.yml' }
+- { template_src: 'env_vars.json.j2', fname: 'env_vars.json' }
+- { template_src: 'group_names.json.j2', fname: 'group_names.json' }
+- { template_src: 'groups.json.j2', fname: 'groups.json' }
+- { template_src: 'hostvars.json.j2', fname: 'hostvars.json' }
+- { template_src: 'vars.json.j2', fname: 'vars.json' }
