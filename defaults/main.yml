@@ -2,6 +2,6 @@
 # defaults file for boss-ansible-role-debug
 
 # Where to save all Ansible variables
-debug_variables: '/tmp/ansible_variables'
+debug_variables: '/etc/ansible_variables'
 
 

@@ -1,8 +1,27 @@
-# include .mk
+.PHONY: list help
 
-SHELL=/bin/bash
+PR_SHA                := $(shell git rev-parse HEAD)
 
-username := bossjones
+define ASCILOGO
+boss-ansible-role-debug
+=======================================
+endef
+
+export ASCILOGO
+
+# http://misc.flogisoft.com/bash/tip_colors_and_formatting
+
+RED=\033[0;31m
+GREEN=\033[0;32m
+ORNG=\033[38;5;214m
+BLUE=\033[38;5;81m
+NC=\033[0m
+
+export RED
+export GREEN
+export NC
+export ORNG
+export BLUE
 
 # verify that certain variables have been defined off the bat
 check_defined = \
@@ -11,91 +30,60 @@ __check_defined = \
     $(if $(value $1),, \
       $(error Undefined $1$(if $(value 2), ($(strip $2)))))
 
-list_allowed_args := name inventory
 
-export PATH := ./bin:./venv/bin:$(PATH)
+export PATH := ./venv/bin:$(PATH)
 
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 current_dir := $(notdir $(patsubst %/,%,$(dir $(mkfile_path))))
+MAKE := make
 
-.PHONY: list help
-# .PHONY: all dockerfile docker-compose test test-build lint clean pristine run run-single run-cluster build release-manager release-manager-snapshot push
-
-# TODO: Modify this command if you want to use cookiecutter to create something from scratch again
-# cookiecutter-init:
-# cookiecutter --output-dir=/Users/user/dev/bossjones/boss-ansible-role-ansible/ \
-# gh:bossjones/cookiecutter-molecule \
-# role_name="bossjones.ansible" \
-# scenario_name="default" \
-# email="bossjones@theblacktonystark.com" \
-# github_user="bossjones" \
-# description="ansible role to bootstrap ansible. part of the bossjones suite of ansible roles" \
-# description_short="ansible role to bootstrap ansible. part of the bossjones suite of ansible roles" \
-# release_date="2017-12-31" \
-# year="2017" \
-# version="0.1.0" \
-# min_ansible_version="2.3.2.0" \
-# allow_duplicates="no" \
-# license="Apache" \
-# company="Tony Dark Labs" \
-# os_user="vagrant" \
-# author_name="Malcolm Jones" \
-# author="Malcolm Jones" \
-# author_email="bossjones@theblacktonystark.com" \
-# repo_name="boss-ansible-role-ansible" \
-# domain_name="theblacktonystark.com" \
-# run_ansible_as_root="no"
-
-bootstrap-molecule-default:
-	molecule init scenario --role-name $(current_dir) --scenario-name default
-
-# NOTE: make this into a bash alias (pretty-yaml)
-pretty-yaml:
-	python -m pyaml /path/to/some/file.yaml
+list_allowed_args := product ip command role tier
 
 help:
-	@echo "Convenience Make commands for provisioning a scarlett node"
+	@printf "\033[1m$$ASCILOGO $$NC\n"
+	@printf "\033[21m\n\n"
+	@printf "=======================================\n"
+	@printf "\n"
 
 list:
 	@$(MAKE) -qp | awk -F':' '/^[a-zA-Z0-9][^$#\/\t=]*:([^=]|$$)/ {split($$1,A,/ /);for(i in A)print A[i]}' | sort
 
-vagrant-provision:
-	vagrant provision
-
-vagrant-up:
-	vagrant up
-
-vagrant-ssh:
-	vagrant ssh
-
-vagrant-destroy:
-	vagrant destroy
-
-vagrant-halt:
-	vagrant halt
-
-vagrant-config:
-	vagrant ssh-config
-
-serverspec:
-	bundle exec rake
-
-serverspec-install:
-	bundle install --path .vendor
-
 download-roles:
-	ansible-galaxy install -r install_roles.txt --roles-path roles/ -vvv
+	ansible-galaxy install -r requirements.yml --roles-path ./roles/
 
-destroy:
+download-roles-global:
+	ansible-galaxy install -r requirements.yml --roles-path=/etc/ansible/roles
+
+download-roles-global-force:
+	ansible-galaxy install --force -r requirements.yml --roles-path=/etc/ansible/roles
+
+raw:
+	$(call check_defined, product, Please set product)
+	$(call check_defined, command, Please set command)
+	@ansible localhost -i inventory-$(product)/ ${PROXY_COMMAND} -m raw -a "$(command)" -f 10
+
+# Compile python modules against homebrew openssl. The homebrew version provides a modern alternative to the one that comes packaged with OS X by default.
+# OS X's older openssl version will fail against certain python modules, namely "cryptography"
+# Taken from this git issue pyca/cryptography#2692
+install-virtualenv-osx:
+	ARCHFLAGS="-arch x86_64" LDFLAGS="-L/usr/local/opt/openssl/lib" CFLAGS="-I/usr/local/opt/openssl/include" pip install -r requirements.txt
+
+docker-run:
+	@virtualization/docker/docker-run.sh
+
+molecule-destroy:
 	molecule destroy
 
 install-cidr-brew:
 	pip install cidr-brewer
 
-install-test-deps:
-	pip install ansible==2.2.3.0
+install-test-deps-pre:
 	pip install docker-py
 	pip install molecule --pre
+
+install-test-deps:
+	pip install docker-py
+	pip install molecule
 
 ci:
 	molecule test
@@ -103,80 +91,79 @@ ci:
 test:
 	molecule test --destroy=always
 
-bootstrap: venv
+bootstrap:
+	echo bootstrap
 
-travis: bootstrap venv ci
+travis:
+	tox
 
-travis-osx:
-	$(MAKE) venv-osx
-	$(MAKE) upgrade-setuptools
-	$(MAKE) venv-osx
-	$(MAKE) ci
+# travis-osx:
+# 	$(MAKE) venv-osx
+# 	$(MAKE) upgrade-setuptools
+# 	$(MAKE) venv-osx
+# 	$(MAKE) ci
 
-# OSX Order of operations, make travis-osx; . venv/bin/activate; make upgrade-setuptools; make travis-osx;
+pip-tools-osx:
+	ARCHFLAGS="-arch x86_64" LDFLAGS="-L/usr/local/opt/openssl/lib" CFLAGS="-I/usr/local/opt/openssl/include" pip install pip-tools pipdeptree
 
-upgrade-setuptools:
-	pip install --ignore-installed --pre "https://github.com/pradyunsg/pip/archive/hotfix/9.0.2.zip#egg=pip" \
-    && pip install --upgrade setuptools==36.0.1 wheel==0.29.0
+pip-tools:
+	pip install pip-tools pipdeptree
 
-which-pip:
-	which pip
+# travis-osx:
+# 	$(MAKE) ci
 
-# enter virtualenv so we can use Ansible
-activate:
-	. venv/bin/activate
+# SOURCE: https://github.com/freedomofpress/ansible-role-jenkins-config/blob/master/requirements.txt
+# This file is autogenerated by pip-compile
+# To update, run:
+#
+#    pip-compile --output-file requirements.txt requirements.in
+#
+.PHONY: pip-compile-upgrade-all
+pip-compile-upgrade-all: pip-tools
+	pip-compile --output-file requirements.txt requirements.in --upgrade
+	pip-compile --output-file requirements-dev.txt requirements-dev.in --upgrade
+	pip-compile --output-file requirements-test.txt requirements-test.in --upgrade
 
-# The tests are written in Python. Make a virtualenv to handle the dependencies.
-venv: requirements.txt
-	@if [ -z $$PYTHON2 ]; then\
-	    PY2_MINOR_VER=`python2 --version 2>&1 | cut -d " " -f 2 | cut -d "." -f 2`;\
-	    if (( $$PY2_MINOR_VER < 7 )); then\
-		echo "Couldn't find python2 in \$PATH that is >=2.7";\
-		echo "Please install python2.7 or later or explicity define the python2 executable name with \$PYTHON2";\
-	        echo "Exiting here";\
-	        exit 1;\
-	    else\
-		export PYTHON2="python2.$$PY2_MINOR_VER";\
-	    fi;\
-	fi;\
-	test -d venv || virtualenv --python=$$PYTHON2 venv;\
-	pip install -r requirements.txt;\
-	pip install -r requirements-dev.txt;\
-	touch venv;\
+.PHONY: pip-compile
+pip-compile: pip-tools
+	pip-compile --output-file requirements.txt requirements.in
+	pip-compile --output-file requirements-dev.txt requirements-dev.in
+	pip-compile --output-file requirements-test.txt requirements-test.in
 
-# Compile python modules against homebrew openssl. The homebrew version provides a modern alternative to the one that comes packaged with OS X by default.
-# OS X's older openssl version will fail against certain python modules, namely "cryptography"
-# Taken from this git issue pyca/cryptography#2692
-# The tests are written in Python. Make a virtualenv to handle the dependencies.
-venv-osx: requirements.txt
-	@if [ -z $$PYTHON2 ]; then\
-	    PY2_MINOR_VER=`python2 --version 2>&1 | cut -d " " -f 2 | cut -d "." -f 2`;\
-	    if (( $$PY2_MINOR_VER < 7 )); then\
-		echo "Couldn't find python2 in \$PATH that is >=2.7";\
-		echo "Please install python2.7 or later or explicity define the python3 executable name with \$PYTHON2";\
-	        echo "Exiting here";\
-	        exit 1;\
-	    else\
-		export PYTHON2="python2.$$PY2_MINOR_VER";\
-	    fi;\
-	fi;\
-	test -d venv || virtualenv --python=$$PYTHON2 venv;\
-	ARCHFLAGS="-arch x86_64" LDFLAGS="-L/usr/local/opt/openssl/lib" CFLAGS="-I/usr/local/opt/openssl/include" pip install -r requirements.txt;\
-	ARCHFLAGS="-arch x86_64" LDFLAGS="-L/usr/local/opt/openssl/lib" CFLAGS="-I/usr/local/opt/openssl/include" pip install -r requirements-dev.txt;\
-	touch venv;\
+.PHONY: install-deps-all
+install-deps-all:
+	pip install -r requirements.txt
+	pip install -r requirements-dev.txt
+
+# travis-bootstrap:
+# 	pip install tox-travis
+# tox-install-all-notest:
+# 	tox -e py36 --notest
+
+up:
+	@bash ./scripts/up.sh
+
+rollback:
+	@bash ./scripts/rollback.sh
+
+commit:
+	vagrant sandbox commit
+
+reload:
+	@vagrant reload
+
+destroy:
+	@vagrant destroy -f
+
+run-ansible:
+	@ansible-playbook -i inventory.ini vagrant_playbook.yml -v
+
+ping:
+	@ansible-playbook -v -i inventory.ini ping.yml
 
 # [ANSIBLE0013] Use shell only when shell functionality is required
 ansible-lint-role:
-	bash -c "find .* -type f -name '*.y*ml' -print0 | xargs -I FILE -t -0 -n1 ansible-lint -x ANSIBLE0006,ANSIBLE0007,ANSIBLE0010,ANSIBLE0013 FILE"
+	bash -c "find .* -type f -name '*.y*ml' ! -name '*.venv' -print0 | xargs -I FILE -t -0 -n1 ansible-lint -x ANSIBLE0006,ANSIBLE0007,ANSIBLE0010,ANSIBLE0013 FILE"
 
 yamllint-role:
-	bash -c "find .* -type f -name '*.y*ml' -print0 | xargs -I FILE -t -0 -n1 yamllint FILE"
-
-ping:
-	$(call check_defined, inventory, Please set inventory)
-	@ansible-playbook -i $(inventory) ping.yml
-
-# SOURCE: https://medium.com/@shredder/using-ansible-tags-with-vagrant-provision-a4856966a987
-# EXAMPLE: ansible-playbook -i inventory —private-key=~/.vagrant.d/insecure_private_key -u vagrant playbook.yml —tags=”phpconf”
-run-playbook:
-	echo "running playbook"
+	bash -c "find .* -type f -name '*.y*ml' ! -name '*.venv' -print0 | xargs -I FILE -t -0 -n1 yamllint FILE"
