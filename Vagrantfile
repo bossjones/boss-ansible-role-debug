@@ -35,6 +35,10 @@ Vagrant.configure(2) do |config|
 
       # This will be applied to all vms
 
+      # set auto_update to false, if you do NOT want to check the correct
+      # additions version when booting this machine
+      vm_config.vbguest.auto_update = false
+
       # Ubuntu
       vm_config.vm.box = settings[:box]
 
